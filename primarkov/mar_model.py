@@ -50,45 +50,38 @@ class MarkovModel:
         self.all_state_number = subcell_number + 2
         self.grid = grid
 
-    # this function calculate markov function for a single trajectory
-    def trajectory_markov_probability(self, trajectory1: Trajectory) -> np.ndarray:
+    # Vectorized: accumulates transitions directly into single matrix using np.add.at
+    def calculate_markov_probability(self, trajectory_set: TrajectorySet) -> None:
         state_number = self.all_state_number
         start_state = self.start_state_index
         end_state = self.end_state_index
-        trajectory_array = trajectory1.usable_simple_sequence
         markov_matrix = np.zeros((state_number, state_number))
-        trajectory_length = trajectory_array.size
-        for markov_transform_start in range(trajectory_length - 1):
-            this_step_start_state = trajectory_array[markov_transform_start]
-            this_step_end_state = trajectory_array[markov_transform_start + 1]
-            markov_matrix[this_step_start_state, this_step_end_state] += 1
-        transition_number_of_trajectory = trajectory_length + 1
-        if transition_number_of_trajectory < 1:
-            transition_number_of_trajectory = 1
-
-        real_start_state = trajectory_array[0]
-        real_end_state = trajectory_array[-1]
-        markov_matrix[start_state, real_start_state] = 1
-        markov_matrix[real_end_state, end_state] = 1
-        
-        markov_matrix = markov_matrix / transition_number_of_trajectory
-
-        return markov_matrix
-
-    # this function calculate markov transformation probability, usually first order.
-    def calculate_markov_probability(self, trajectory_set: TrajectorySet) -> None:
-        state_number1 = self.all_state_number
-        markov_matrix = np.zeros((state_number1, state_number1))
         trajectory_list = trajectory_set.trajectory_list
-        print('begin calculating matrix')
-        print(datetime.datetime.now())
+        print(f'Building Markov matrix from {len(trajectory_list)} trajectories...')
+
         for trajectory1 in trajectory_list:
-            not_out_of_usable = not trajectory1.has_not_usable_index
-            if not_out_of_usable:
-                markov_matrix1 = self.trajectory_markov_probability(trajectory1)
-                markov_matrix += markov_matrix1
-        print('calculating ends')
-        print(datetime.datetime.now())
+            if trajectory1.has_not_usable_index:
+                continue
+
+            trajectory_array = trajectory1.usable_simple_sequence
+            if trajectory_array.size == 0:
+                continue
+
+            trajectory_length = trajectory_array.size
+            transition_weight = 1.0 / max(1, trajectory_length + 1)
+
+            # Vectorized transition counting using np.add.at
+            if trajectory_length > 1:
+                from_states = trajectory_array[:-1].astype(np.int64)
+                to_states = trajectory_array[1:].astype(np.int64)
+                np.add.at(markov_matrix, (from_states, to_states), transition_weight)
+
+            # Start and end transitions
+            real_start_state = int(trajectory_array[0])
+            real_end_state = int(trajectory_array[-1])
+            markov_matrix[start_state, real_start_state] += transition_weight
+            markov_matrix[real_end_state, end_state] += transition_weight
+
         self.real_markov_matrix = markov_matrix
 
     # this function add noise to real markov matrix
@@ -169,18 +162,14 @@ class MarkovModel:
                     guidepost1 = self.guidepost_set[guidepost_index]
                     guidepost1.guidepost_add(state_previous, state_next, trajectory_length)
 
-    #
-    def give_neighboring_matrix(self, grid:Grid):
+    # Vectorized: uses direct numpy indexing instead of nested loops
+    def give_neighboring_matrix(self, grid: Grid):
         subcell_number = self.subcell_number
         neighbors = grid.subcell_neighbors_usable_index
-        matrix = np.empty((subcell_number, subcell_number), dtype=bool)
-        for subcell_index1 in range(subcell_number):
-            for subcell_index2 in range(subcell_number):
-                matrix[subcell_index1, subcell_index2] = False
+        matrix = np.zeros((subcell_number, subcell_number), dtype=bool)
         for subcell_index in range(subcell_number):
-            neeighbors_of_this_subcell = neighbors[subcell_index]
-            for neighbor in neeighbors_of_this_subcell:
-                matrix[subcell_index, neighbor] = True
+            neighbors_of_this_subcell = neighbors[subcell_index]
+            matrix[subcell_index, neighbors_of_this_subcell] = True
         self.neighboring_matrix = matrix
 
     #
@@ -337,18 +326,14 @@ class MarkovModel:
 
     #
     def model_filtering(self, trajectory_set1: TrajectorySet, grid: Grid):
-        print('[DEBUG] model_filtering started:', datetime.datetime.now())
+        print('Filtering model (calibration, guideposts, noise)...')
         self.start_end_trip_distribution_calibration()
-        print('[DEBUG] start_end_trip_distribution_calibration done:', datetime.datetime.now())
         self.give_level1_length_thresholds()
-        print('[DEBUG] give_level1_length_thresholds done:', datetime.datetime.now())
         self.get_sensitive_state()
         self.set_up_guideposts(grid)
-        print('[DEBUG] set_up_guideposts done:', datetime.datetime.now())
         self.give_guidepost_order2_info(trajectory_set1)
-        print('[DEBUG] give_guidepost_order2_info done:', datetime.datetime.now())
         self.add_noise_to_guidepost()
         self.order1_and_2_end_consistency()
-        print('[DEBUG] model_filtering done:', datetime.datetime.now())
+        print('Model filtering complete.')
         pass
 

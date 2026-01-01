@@ -856,21 +856,16 @@ class Grid:
         else:
             trajectory1.has_not_usable_index = True
 
-    #
+    # Vectorized: computes all central points at once
     def usable_state_central_points(self):
         state_number = self.usable_state_number
-        central_points_gps = np.zeros((state_number, 2)) - 1
-        for usable_state_index in range(state_number):
-            real_subcell_state_index = self.usable_subcell_index_to_real_index_dict[usable_state_index]
-            real_subcell_borders = self.level2_borders[real_subcell_state_index, :]
-            north = real_subcell_borders[0]
-            south = real_subcell_borders[1]
-            west = real_subcell_borders[2]
-            east = real_subcell_borders[3]
-            central_latitude = (north + south) / 2
-            central_longitude = (west + east) / 2
-            central_points_gps[usable_state_index, 0] = central_latitude
-            central_points_gps[usable_state_index, 1] = central_longitude
+        # Vectorized: get all real indices at once
+        real_indices = self.usable_subcell_index_to_real_index_dict[:state_number]
+        borders = self.level2_borders[real_indices, :]  # Shape: (state_number, 4)
+        # borders columns: [north, south, west, east]
+        central_latitude = (borders[:, 0] + borders[:, 1]) / 2
+        central_longitude = (borders[:, 2] + borders[:, 3]) / 2
+        central_points_gps = np.column_stack([central_latitude, central_longitude])
         return central_points_gps
 
     #

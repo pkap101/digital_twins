@@ -18,6 +18,7 @@ class RealLocationTranslator:
     def load_translator(self, grid):
         self.grid = grid
 
+    # Vectorized: samples all points at once instead of per-point loop
     def translate_given_state_sequence(self, state_sequence):
         grid1 = self.grid
         if state_sequence.size < 2:
@@ -25,14 +26,22 @@ class RealLocationTranslator:
             start_end_array[0] = state_sequence[0]
             start_end_array[1] = state_sequence[0]
             state_sequence = start_end_array
+
+        # Vectorized translation: get all borders at once
         all_level2_state_borders = grid1.level2_borders
+        borders = all_level2_state_borders[state_sequence]  # Shape: (n, 4)
+
+        # borders columns: [north, south, west, east]
+        # Sample uniformly within each cell's bounds
         trajectory_length = state_sequence.size
-        real_trajectory = np.random.random((trajectory_length, 2))
-        for index_of_states in range(trajectory_length):
-            state = state_sequence[index_of_states]
-            borders = all_level2_state_borders[state]
-            location = self.sample_from_a_subcell(borders)
-            real_trajectory[index_of_states, :] = location
+        rand_x = np.random.random(trajectory_length)
+        rand_y = np.random.random(trajectory_length)
+
+        # x is longitude (west to east), y is latitude (south to north)
+        x_values = borders[:, 2] + rand_x * (borders[:, 3] - borders[:, 2])  # west + rand*(east-west)
+        y_values = borders[:, 1] + rand_y * (borders[:, 0] - borders[:, 1])  # south + rand*(north-south)
+
+        real_trajectory = np.column_stack([x_values, y_values])
         return real_trajectory
 
     def sample_from_a_subcell(self, borders):

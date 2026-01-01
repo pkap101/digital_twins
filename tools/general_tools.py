@@ -65,14 +65,12 @@ class GeneralTools:
         combine_result = np.concatenate((row_result, column_result), axis=1)
         return combine_result
 
-    # this function calculate frequency of full number cells given cell index, cell frequency and whole cell number.
+    # Vectorized: uses direct numpy indexing instead of loop
     def whole_frequency(self, cell_indices: np.ndarray, cell_frequency_array: np.ndarray,
                         full_cell_number: int) -> np.ndarray:
         whole_frequency_array = np.zeros(full_cell_number)
-        for index_for_cell_indices in range(cell_indices.size):
-            cell_index = cell_indices[index_for_cell_indices]
-            cell_frequency = cell_frequency_array[index_for_cell_indices]
-            whole_frequency_array[cell_index] = cell_frequency
+        # Vectorized assignment using numpy indexing
+        whole_frequency_array[cell_indices] = cell_frequency_array
         return whole_frequency_array
 
     #

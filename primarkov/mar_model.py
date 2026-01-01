@@ -337,12 +337,18 @@ class MarkovModel:
 
     #
     def model_filtering(self, trajectory_set1: TrajectorySet, grid: Grid):
+        print('[DEBUG] model_filtering started:', datetime.datetime.now())
         self.start_end_trip_distribution_calibration()
+        print('[DEBUG] start_end_trip_distribution_calibration done:', datetime.datetime.now())
         self.give_level1_length_thresholds()
+        print('[DEBUG] give_level1_length_thresholds done:', datetime.datetime.now())
         self.get_sensitive_state()
         self.set_up_guideposts(grid)
+        print('[DEBUG] set_up_guideposts done:', datetime.datetime.now())
         self.give_guidepost_order2_info(trajectory_set1)
+        print('[DEBUG] give_guidepost_order2_info done:', datetime.datetime.now())
         self.add_noise_to_guidepost()
         self.order1_and_2_end_consistency()
+        print('[DEBUG] model_filtering done:', datetime.datetime.now())
         pass
 

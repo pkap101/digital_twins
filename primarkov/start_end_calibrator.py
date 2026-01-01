@@ -9,6 +9,7 @@ from config.parameter_carrier import ParameterCarrier
 import torch
 import torch.optim as optim
 import cvxpy as cp
+import datetime
 
 
 class StartEndCalibrator:
@@ -94,25 +95,34 @@ class StartEndCalibrator:
 
     #
     def calculate_shortest_path_length(self, grid: Grid):
+        print('  [DEBUG] calculate_shortest_path_length started:', datetime.datetime.now())
         start_state_number = self.non_zero_start_indices.size
         end_state_number = self.non_zero_end_indices.size
         self.inner_indices_shortest_path_lengths = np.zeros((start_state_number, end_state_number)) - 1
         self.inner_indices_shortest_large_cell_paths_lengths = np.zeros((start_state_number, end_state_number)) - 1
+
+        # Optimized: compute all shortest paths at once instead of O(N^2) individual Dijkstra calls
+        print('  [DEBUG] Computing all-pairs shortest paths...', datetime.datetime.now())
+        all_paths = dict(nx.all_pairs_dijkstra_path(self.distance_network))
+        print('  [DEBUG] All-pairs paths computed:', datetime.datetime.now())
+
         for inner_start_index in range(start_state_number):
+            usable_start_index = self.non_zero_start_indices[inner_start_index]
             for inner_end_index in range(end_state_number):
-                usable_start_index = self.non_zero_start_indices[inner_start_index]
                 usable_end_index = self.non_zero_end_indices[inner_end_index]
-                shortest_path = nx.dijkstra_path(self.distance_network, source=usable_start_index,
-                                                 target=usable_end_index)
+                shortest_path = all_paths[usable_start_index][usable_end_index]
                 large_cell_path = grid.non_repeat_large_cell_array_from_usable(shortest_path)
                 self.inner_indices_shortest_path_lengths[inner_start_index, inner_end_index] = len(shortest_path)
                 self.inner_indices_shortest_large_cell_paths_lengths[inner_start_index, inner_end_index] = len(
                     large_cell_path)
+        print('  [DEBUG] Path lengths filled:', datetime.datetime.now())
+
         self.inner_indices_arithmetic_mean_length = np.empty(self.inner_indices_shortest_path_lengths.shape)
         for i in range(self.inner_indices_shortest_path_lengths.shape[0]):
             for j in range(self.inner_indices_shortest_path_lengths.shape[1]):
                 self.inner_indices_arithmetic_mean_length[i, j] = \
                     self.expect_length_in_geometric_length_distribution(self.inner_indices_shortest_path_lengths[i, j])
+        print('  [DEBUG] calculate_shortest_path_length done:', datetime.datetime.now())
 
     #
     def break_constraints(self, start_end_trip_weights):
@@ -375,8 +385,10 @@ class StartEndCalibrator:
 
     #
     def distribution_calibration(self, grid: Grid, noisy_matrix, large_trans_indicator):
+        print('[DEBUG] distribution_calibration started:', datetime.datetime.now())
         cc = self.cc
         self.setup_calibrator(grid, noisy_matrix, large_trans_indicator)
+        print('[DEBUG] setup_calibrator done, starting CVXPY optimization:', datetime.datetime.now())
         divided_distribution = self.distribution_optimization_cvxpy2()
         iter_turns = 0
         while (divided_distribution is None) and (iter_turns < 10):
@@ -386,7 +398,9 @@ class StartEndCalibrator:
         while divided_distribution is None:
             divided_distribution = self.distribution_optimization_cvxpy2(loose_parameter=loose_multiplier ** 2)
             loose_multiplier = loose_multiplier + 1
+        print('[DEBUG] CVXPY optimization done:', datetime.datetime.now())
         non_length_divided_distribution = self.optimized_non_length_divided_distribution(divided_distribution)
+        print('[DEBUG] distribution_calibration done:', datetime.datetime.now())
         return non_length_divided_distribution
 
     #

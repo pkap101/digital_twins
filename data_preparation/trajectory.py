@@ -71,11 +71,11 @@ class Trajectory:
 
     def give_simple_trajectory(self, dict1: np.ndarray):
         level2_cell_index_array = self.level2_cell_index_sequence
-        unrepeated_sequence, frequency = self.calculate_unrepeated_trajectory(level2_cell_index_array)
-        unrepeated_usable_sequence = dict1[unrepeated_sequence]
-        self.cell_sequence = unrepeated_sequence
-        self.cell_sequence_frequency = frequency
-        self.usable_simple_sequence = unrepeated_usable_sequence
+        # Don't remove duplicates - keep full sequence for Markov learning
+        usable_sequence = dict1[level2_cell_index_array]
+        self.cell_sequence = level2_cell_index_array
+        self.cell_sequence_frequency = np.ones(len(level2_cell_index_array), dtype=int)
+        self.usable_simple_sequence = usable_sequence
 
     def calculate_unrepeated_trajectory(self, sequence: np.ndarray):
         gt1 = GeneralTools()

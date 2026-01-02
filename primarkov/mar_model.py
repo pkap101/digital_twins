@@ -100,6 +100,11 @@ class MarkovModel:
         noisy_markov = noise1.positive_regulation_for_markov_matrix(noisy_markov, 'queue_minus')
         self.noisy_markov_matrix = noisy_markov
 
+    def add_reverse_transitions(self):
+        """Add reverse transitions with 0.5 weight to make matrix more symmetric."""
+        matrix = self.real_markov_matrix[:-2, :-2]
+        self.real_markov_matrix[:-2, :-2] = matrix + matrix.T * 0.5
+
     #
     def get_filtered_sensitive_states(self):
         filter1 = Filter(self.cc)
@@ -321,6 +326,7 @@ class MarkovModel:
         self.set_up_for_model(grid)
         self.give_neighboring_matrix(grid)
         self.calculate_markov_probability(trajectory_set1)
+        self.add_reverse_transitions()
         self.noisy_markov()
         pass
 

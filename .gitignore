@@ -1,0 +1,10 @@
+# Python cache
+__pycache__/
+*.pyc
+
+# Documentation (generated locally)
+/docs/
+
+# IDE
+.vscode/
+.idea/

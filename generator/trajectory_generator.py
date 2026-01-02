@@ -262,13 +262,14 @@ class Generator:
                     pass
                 else:
                     return False
-            if neighbor_check:
-                if (this_step < end_state - 2) and (previous_step < end_state - 2):
-                    neighbor_indicator = self.check_large_neighbor(this_step, previous_step)
-                    if neighbor_indicator is True:
-                        pass
-                    else:
-                        return False
+            # DISABLED: Large neighbor check causes high rejection rate
+            # if neighbor_check:
+            #     if (this_step < end_state - 2) and (previous_step < end_state - 2):
+            #         neighbor_indicator = self.check_large_neighbor(this_step, previous_step)
+            #         if neighbor_indicator is True:
+            #             pass
+            #         else:
+            #             return False
         if len(trajectory) == 0:
             return False
         trajectory = np.array(trajectory, dtype=int)

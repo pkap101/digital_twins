@@ -10,7 +10,7 @@ class Divide:
     # divide parameter, output is array[x_divide_number, y_divide_number, x_increase, y_increase]
     def level1_divide_parameter(self, total_density, trajectory_number, border2):
         divide_threshold = 60
-        initial_parameter = 600
+        initial_parameter = 1333  # Increased for ~15x15 grid
         top = border2[0]
         bot = border2[1]
         lef = border2[2]
@@ -29,7 +29,7 @@ class Divide:
         return divide_parameter1
 
     def subdividing_parameter(self, noisy_density):
-        initial_parameter = 200
+        initial_parameter = 100  # More aggressive subdivision
         subdivide_parameter1 = int(np.ceil(np.sqrt(noisy_density / initial_parameter)))
         return subdivide_parameter1
 
